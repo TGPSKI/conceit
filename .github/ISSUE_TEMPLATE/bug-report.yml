@@ -1,0 +1,64 @@
+name: Bug Report
+description: Report a bug or unexpected build failure
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the stack failed?
+      options:
+        - PyTorch build
+        - vllm build
+        - llama.cpp build
+        - cuda-env.sh
+        - build-upstream.sh
+        - Makefile
+        - build-triage skill
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and CUDA version
+      description: "e.g. NVIDIA RTX PRO 4500 (sm_120), CUDA 13.3"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: "Output of: python --version"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Commands run, in order
+    validations:
+      required: true
+
+  - type: textarea
+    id: build_log
+    attributes:
+      label: Build log excerpt
+      description: Paste the last 50 lines of the build log. Strip any secrets.
+      render: text
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment output
+      description: "Paste output of: make env-show (or manually: echo $CUDA_HOME $TORCH_CUDA_ARCH_LIST)"

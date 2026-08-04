@@ -1,0 +1,39 @@
+name: Proposal
+description: Propose a significant change, new build target, or new direction
+labels: [proposal]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One-paragraph overview of what you're proposing
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this needed? What problem does it solve for local model builders?
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Design
+      description: How would this work? Include script changes, new Makefile targets, or patch strategy.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches were weighed and why were they rejected?
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Target hardware
+      description: "GPU family and CUDA version this proposal targets (e.g. Blackwell sm_120, CUDA 13.3)"

@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref (saves runner minutes on busy PRs).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Fast-feedback gate. Runs on every push and PR.
+  # A GPU build cannot run here, so CI gates everything else: the scripts
+  # that drive the build, the skill, and the patches themselves.
+  # ─────────────────────────────────────────────────────────────────────────
+  ci:
+    name: Build & Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        # actions/checkout v6.0.2 (Node.js 24)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      # Delegate to the Makefile so CI and a local `make check` cannot drift.
+      - name: Lint + syntax check
+        run: make check
+
+      - name: Validate skill frontmatter
+        run: |
+          ok=true
+          for skill in .agents/skills/*/SKILL.md; do
+            [ -f "$skill" ] || continue
+            for field in name description metadata; do
+              grep -q "^${field}:" "$skill" || {
+                echo "FAIL: $skill is missing frontmatter field: $field"
+                ok=false
+              }
+            done
+          done
+          $ok || exit 1
+          echo "skill frontmatter: OK"
+
+      # Patches are the product here, so a malformed one is a build break.
+      - name: Validate patches
+        run: |
+          ok=true
+          found=0
+          for patch in patches/*/*.patch; do
+            [ -f "$patch" ] || continue
+            found=$((found + 1))
+            if grep -q '^--- ' "$patch" && grep -q '^+++ ' "$patch"; then
+              echo "OK: $patch"
+            else
+              echo "FAIL: $patch is not a unified diff (no ---/+++ header)"
+              ok=false
+            fi
+          done
+          [ "$found" -gt 0 ] || { echo "FAIL: no patches found — patches/ is the product"; exit 1; }
+          $ok || exit 1
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Cross-platform full-scope tests.
+  # Triggers:
+  #   - PR carrying the `full-test` label
+  #   - manual workflow_dispatch
+  #   - any push to main
+  # ─────────────────────────────────────────────────────────────────────────
+  full-scope:
+    name: Full-scope (${{ matrix.label }})
+    needs: ci
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        contains(github.event.pull_request.labels.*.name, 'full-test')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux/arm64
+            os: ubuntu-24.04-arm
+          - label: macos/arm64
+            os: macos-14
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        # actions/checkout v6.0.2 (Node.js 24)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Install shellcheck (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Install shellcheck (macOS)
+        if: runner.os == 'macOS'
+        run: brew install shellcheck
+
+      - name: Lint + syntax check
+        run: make check

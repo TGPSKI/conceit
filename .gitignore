@@ -1,0 +1,51 @@
+# ─── Cloned source trees (built at runtime via make) ─────────────────────────
+src/
+
+# ─── NVIDIA library archives (large binary downloads) ────────────────────────
+cuda/
+
+# ─── Python virtual environments ─────────────────────────────────────────────
+**/.venv/
+venv/
+
+# ─── Build artifacts ──────────────────────────────────────────────────────────
+**/dist/
+**/.deps/
+**/build/
+**/*.egg-info/
+**/.eggs/
+
+# ─── Runtime state files ──────────────────────────────────────────────────────
+**/.build-status.json
+**/.build-status.json.tmp
+
+# ─── Python cache ─────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ─── uv / pip caches ──────────────────────────────────────────────────────────
+.uv/
+.cache/
+
+# ─── Claude Code local settings (session-specific permissions) ───────────────
+.claude/
+
+# ─── Editor ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# Private
+
+sessions/*
+
+# Strategy/launch notes — competitive analysis and launch messaging, not public
+conceit-launch-plan.md
