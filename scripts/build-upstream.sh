@@ -59,11 +59,23 @@ json_escape() {
 
 emit_status() {
   local phase=$1 step=${2:-null} jobs=${3:-0} detail=${4:-}
-  [[ -z "$_status_file" ]] && return
-  printf '{"phase":"%s","ts":"%s","step":"%s","jobs":%s,"detail":"%s"}\n' \
+  [[ -z "$_status_file" ]] && return 0
+
+  # The status file lives inside the source tree, which does not exist yet on a
+  # fresh checkout — and must stay empty until the clone lands, because git
+  # refuses to clone into a directory that already has files in it. So skip the
+  # write until the tree is a repo: the init/clone phases have nowhere to go.
+  # Never fail here either; a status write must not kill a three-hour build.
+  [[ -d "${_status_file%/*}/.git" ]] || return 0
+
+  if printf '{"phase":"%s","ts":"%s","step":"%s","jobs":%s,"detail":"%s"}\n' \
     "$(json_escape "$phase")" "$(ts_iso)" "$(json_escape "$step")" \
     "$jobs" "$(json_escape "$detail")" \
-    > "${_status_file}.tmp" && mv "${_status_file}.tmp" "$_status_file"
+    > "${_status_file}.tmp" 2>/dev/null
+  then
+    mv -f "${_status_file}.tmp" "$_status_file" 2>/dev/null || true
+  fi
+  return 0
 }
 
 # Count all descendants of a PID (not just direct children).
@@ -219,7 +231,11 @@ case "$preset" in
   pytorch)
     build_cmd=${BUILD_CMD:-"MAX_JOBS=${MAX_JOBS} NVCC_THREADS=${NVCC_THREADS} python -m pip install -e . -v --no-build-isolation"}
     build_dist_cmd=${BUILD_DIST_CMD:-"python -m pip wheel --no-build-isolation --no-deps -w dist ."}
-    extra_pip_deps=${EXTRA_PIP_DEPS:-"cmake ninja packaging pyyaml typing_extensions six"}
+    # --no-build-isolation means pip installs nothing on our behalf: every entry
+    # in pytorch's [build-system] requires has to already be in the venv. numpy
+    # and scikit-build-core (the build backend since the setup.py retirement)
+    # are load-bearing — without them the build dies before the first compile.
+    extra_pip_deps=${EXTRA_PIP_DEPS:-"cmake ninja packaging pyyaml typing_extensions six numpy scikit-build-core"}
     ;;
   vllm)
     # vllm uses uv (per AGENTS.md). We override the torch==2.11.0 pin with our

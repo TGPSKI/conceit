@@ -68,7 +68,10 @@ src/                      # gitignored — cloned upstream trees live here
 - **`.build-status.json`** is written atomically (`tmp` → `mv`) so a reader
   never sees a half-written file. Phases: `init → clone → venv → prebuild →
   build_start → building → build_done → wheel → done`, or `failed`. Anything
-  interpolated into it goes through `json_escape`.
+  interpolated into it goes through `json_escape`. It lives inside the source
+  tree, so on a first build nothing is written until the clone lands — `init`
+  and `clone` only show up on a re-run. Emitting it is best-effort by design:
+  a status write must never take down a build that has been running for hours.
 - **Every env var takes the form `${VAR:-default}`**, so any single value can be
   overridden without editing a file. Keep it that way.
 - **Paths derive from the repo root**, computed from the script's own location.

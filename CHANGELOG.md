@@ -7,6 +7,23 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The first build on a fresh clone always failed.** `emit_status` writes
+  `.build-status.json` into the target's source tree, but the `init` phase fires
+  before the clone has created that directory — so `make build-pytorch` died
+  instantly with `src/pytorch/.build-status.json.tmp: No such file or directory`
+  on any checkout that had never been built. Status emission now skips until the
+  tree is a git repo, and never fails the build if the write does not land. This
+  also unbreaks the case where the destination directory exists but is empty:
+  the old code seeded a status file into it, and `git clone` then refused the
+  now-non-empty directory.
+- **The pytorch preset was missing two build requirements.** Upstream builds
+  through `scikit-build-core` now, and `--no-build-isolation` installs nothing on
+  our behalf, so `numpy` and `scikit-build-core` have to be seeded into the venv
+  alongside the rest of `[build-system] requires`. Without them the build fails
+  at backend import, before a single file compiles.
+
 ## [0.1.0] - 2026-08-03
 
 First public release. conceit began as the private build orchestration behind a
