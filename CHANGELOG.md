@@ -18,6 +18,15 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   also unbreaks the case where the destination directory exists but is empty:
   the old code seeded a status file into it, and `git clone` then refused the
   now-non-empty directory.
+- **`check-env` passed on a machine that could not compile.** `cuda-env.sh`
+  hardcoded `CC=/usr/bin/gcc-15`, and `check-env` printed that path without ever
+  testing it — so a host without gcc 15 installed sailed through the gate and
+  died in cmake twelve minutes later, after a 1.4 GB clone and a full submodule
+  sync (`is not a full path to an existing compiler tool`). The host compiler is
+  now probed (`gcc-15`, `gcc-14`, `gcc-13`, then plain `gcc`), and `check-env`
+  fails if `CC`/`CXX` are not executable, or if the compiler is newer than the
+  cap in the toolkit's own `crt/host_config.h` — which is what a rolling distro
+  hands you by default, since CUDA 13.3 stops at gcc 15 and Manjaro is on 16.
 - **The pytorch preset was missing two build requirements.** Upstream builds
   through `scikit-build-core` now, and `--no-build-isolation` installs nothing on
   our behalf, so `numpy` and `scikit-build-core` have to be seeded into the venv

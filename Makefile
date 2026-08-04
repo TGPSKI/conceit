@@ -108,6 +108,16 @@ check-env: ## Validate prerequisites: CUDA, Python, uv, GPU, disk
 	@[ -n "$(CUDA_HOME)" ] || { echo "ERROR: CUDA_HOME not set. Run: source scripts/cuda-env.sh"; exit 1; }
 	@[ -d "$(CUDA_HOME)" ] || { echo "ERROR: CUDA_HOME=$(CUDA_HOME) does not exist"; exit 1; }
 	@$(call require_bins,nvidia-smi python)
+	@[ -x "$(CC)" ]  || { echo "ERROR: CC=$(CC) is not an executable compiler. Install a CUDA-supported gcc (pacman -S gcc15 | apt install gcc-15 g++-15), or export CC/CXX"; exit 1; }
+	@[ -x "$(CXX)" ] || { echo "ERROR: CXX=$(CXX) is not an executable compiler. Install a CUDA-supported g++ (pacman -S gcc15 | apt install gcc-15 g++-15), or export CC/CXX"; exit 1; }
+	@hdr="$(CUDA_HOME)/include/crt/host_config.h"; \
+	  max=$$(grep -oE '__GNUC__ > [0-9]+' "$$hdr" 2>/dev/null | head -1 | grep -oE '[0-9]+$$' || true); \
+	  have=$$("$(CXX)" -dumpversion 2>/dev/null | cut -d. -f1 || true); \
+	  if [ -n "$$max" ] && [ -n "$$have" ] && [ "$$have" -gt "$$max" ]; then \
+	    echo "ERROR: $(CXX) is gcc $$have, and this CUDA supports up to gcc $$max — nvcc will refuse to compile."; \
+	    echo "       Install gcc $$max and re-source scripts/cuda-env.sh, or export CC/CXX to one."; \
+	    exit 1; \
+	  fi
 	@[ -x "$(UV)" ] || { echo "ERROR: uv not found at $(UV). Install: curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }
 	@[ -n "$(TORCH_CUDA_ARCH_LIST)" ] || echo "WARN: TORCH_CUDA_ARCH_LIST unset — will compile every arch (~9x slower)"
 	@echo "python               $$(python --version 2>&1)"
