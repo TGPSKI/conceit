@@ -267,7 +267,7 @@ lint: ## shellcheck every script
 	@command -v shellcheck >/dev/null 2>&1 || { \
 	  echo "ERROR: shellcheck not found. Install: pacman -S shellcheck | apt install shellcheck | brew install shellcheck"; \
 	  exit 1; }
-	@shellcheck --rcfile=.shellcheckrc $(SCRIPTS)
+	@shellcheck $(SCRIPTS)
 	@echo "shellcheck: OK ($(words $(SCRIPTS)) scripts)"
 
 .PHONY: fmt-check

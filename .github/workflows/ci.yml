@@ -15,6 +15,12 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Pinned deliberately. An unpinned shellcheck means CI lints with a different
+  # version than you do, and the two disagree — 0.9.0 flags SC2015 where 0.11.0
+  # does not. Bump this and re-run `make check` locally in the same change.
+  SHELLCHECK_VERSION: "0.11.0"
+
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
   # Fast-feedback gate. Runs on every push and PR.
@@ -30,8 +36,21 @@ jobs:
         # actions/checkout v6.0.2 (Node.js 24)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Install shellcheck ${{ env.SHELLCHECK_VERSION }}
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)   target=linux.x86_64 ;;
+            Linux-aarch64)  target=linux.aarch64 ;;
+            Darwin-arm64)   target=darwin.aarch64 ;;
+            Darwin-x86_64)  target=darwin.x86_64 ;;
+            *) echo "no shellcheck build for $(uname -s)-$(uname -m)"; exit 1 ;;
+          esac
+          v="$SHELLCHECK_VERSION"
+          curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/v$v/shellcheck-v$v.$target.tar.xz" \
+            | tar -xJf -
+          sudo install "shellcheck-v$v/shellcheck" /usr/local/bin/shellcheck
+          rm -rf "shellcheck-v$v"
+          shellcheck --version
 
       # Delegate to the Makefile so CI and a local `make check` cannot drift.
       - name: Lint + syntax check
@@ -100,13 +119,21 @@ jobs:
         # actions/checkout v6.0.2 (Node.js 24)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Install shellcheck (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-
-      - name: Install shellcheck (macOS)
-        if: runner.os == 'macOS'
-        run: brew install shellcheck
+      - name: Install shellcheck ${{ env.SHELLCHECK_VERSION }}
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)   target=linux.x86_64 ;;
+            Linux-aarch64)  target=linux.aarch64 ;;
+            Darwin-arm64)   target=darwin.aarch64 ;;
+            Darwin-x86_64)  target=darwin.x86_64 ;;
+            *) echo "no shellcheck build for $(uname -s)-$(uname -m)"; exit 1 ;;
+          esac
+          v="$SHELLCHECK_VERSION"
+          curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/v$v/shellcheck-v$v.$target.tar.xz" \
+            | tar -xJf -
+          sudo install "shellcheck-v$v/shellcheck" /usr/local/bin/shellcheck
+          rm -rf "shellcheck-v$v"
+          shellcheck --version
 
       - name: Lint + syntax check
         run: make check

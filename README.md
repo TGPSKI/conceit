@@ -110,4 +110,4 @@ cuDNN, cuBLASMp, and cuDSS are found by globbing `cuda/` for their extracted arc
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-3.0 — see [LICENSE](LICENSE).

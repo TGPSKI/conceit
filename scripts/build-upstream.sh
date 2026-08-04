@@ -159,8 +159,9 @@ progress_monitor() {
       last_step=$(
         for pid in $(pgrep nvcc 2>/dev/null || pgrep ninja 2>/dev/null || true); do
           _wdir=$(pwdx "$pid" 2>/dev/null | awk '{print $2}')
-          [[ -n "$_wdir" && -d "$_wdir" ]] && \
+          if [[ -n "$_wdir" && -d "$_wdir" ]]; then
             grep -rhoP '\[\K[0-9]+/[0-9]+(?=\])' "$_wdir" 2>/dev/null || true
+          fi
         done | tail -1
       )
     fi
