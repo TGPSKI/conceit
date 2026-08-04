@@ -7,6 +7,30 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- **`make setup` — environment intake.** Every prerequisite in v0.1.0 was a
+  hardcoded default that happened to be true on one workstation, and `check-env`
+  only validated those assumptions rather than discovering the machine. There was
+  nowhere to record a per-machine answer, so each new host rediscovered its own
+  paths by failing a build. `scripts/setup.sh` finds every CUDA toolkit and
+  gcc/g++ pair present — including toolchains built from source and off `PATH`,
+  via `CONCEIT_CC_SEARCH_PATH` — reads the gcc cap out of the chosen toolkit's own
+  `crt/host_config.h`, and then **compiles a real CUDA translation unit with the
+  pair you pick**. That three-second `nvcc -ccbin` is the only check that proves a
+  toolkit and a host compiler agree; when it disagrees with a version table, the
+  compile wins. Answers persist to `conceit.env` (gitignored), sourced by
+  `cuda-env.sh` ahead of every default and written in the same `${VAR:-default}`
+  form, so precedence reads: exported by hand > this machine's intake > the
+  defaults. `make setup-auto` skips the prompts, `make setup-show` prints the
+  result.
+- **`.agents/skills/env-intake/SKILL.md`** — the directed workflow around that
+  script, for the parts a scan cannot decide: which toolkit a machine should
+  standardize on, where an unpackaged toolchain lives, and whether a failed smoke
+  test means "pick another compiler" or "this machine needs a package." It also
+  says plainly not to reach for `-allow-unsupported-compiler`, which converts a
+  five-second failure into a corrupt build hours later.
+
 ### Fixed
 
 - **The first build on a fresh clone always failed.** `emit_status` writes

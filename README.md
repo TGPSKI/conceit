@@ -7,6 +7,7 @@
 No wheel to wait for. No container to inherit. No blog post to follow line by line.
 
 ```bash
+make setup
 source scripts/cuda-env.sh
 make check-env
 make build-pytorch
@@ -29,6 +30,7 @@ conceit is that path, written down and made repeatable.
 
 | | |
 |---|---|
+| **Intake** | `make setup` discovers this machine rather than assuming it: every CUDA toolkit and gcc/g++ pair present (including from-source toolchains off `PATH`), the gcc cap read out of the toolkit's own `crt/host_config.h`, then a real `nvcc` compile to prove the pair works. Answers persist to `conceit.env`. |
 | **Orchestrator** | `build-upstream.sh` clones, syncs submodules with backoff, runs preflight, creates the venv, compiles under a process-tree monitor, and produces wheels. Per-target presets encode the quirks: vLLM's uv + local-torch override that keeps `cuda-toolkit` out of the dep graph, PyTorch's `--no-build-isolation`, llama.cpp's cmake flags. |
 | **Build state** | `.build-status.json` per target — `init → clone → venv → build_start → build_done → wheel → done`, with the current ninja step and a live count of every descendant process. Poll it instead of grepping logs. |
 | **Patches** | Generated from the live source tree, never hand-written. Applying is idempotent; a patch that no longer applies is a hard error, not a warning. |
@@ -75,19 +77,24 @@ Anything scoring 4–5 gets resolved before you compile. Every row cost a real b
 ```bash
 git clone https://github.com/TGPSKI/conceit.git
 cd conceit
-source scripts/cuda-env.sh   # CUDA_HOME, TORCH_CUDA_ARCH_LIST=12.0+PTX, host compiler
-make check-env               # fails fast on anything missing
+make setup                   # find CUDA + compiler on THIS machine, compile-test the pair, write conceit.env
+source scripts/cuda-env.sh   # picks up conceit.env
+make check-env               # re-verifies everything, fails fast on anything missing
 ```
 
-`make help` lists every target. Nothing is installed system-wide; the source trees and venvs live under `src/` in the checkout.
+`make setup` is the intake. It scans for every CUDA toolkit and gcc/g++ pair on the machine — including toolchains built from source and off `PATH`, via `CONCEIT_CC_SEARCH_PATH=/prefix/bin` — shows you what it found with versions, and then **compiles a real CUDA translation unit with the pair you pick**. That three-second `nvcc -ccbin` is the only check that proves a toolkit and a host compiler agree; a version table goes stale one CUDA release later. The answers land in `conceit.env`, which every later shell inherits.
+
+`make setup-auto` takes the best candidate for each without prompting, still smoke tested. `make setup-show` prints what this machine resolved. `make help` lists every target. Nothing is installed system-wide; the source trees and venvs live under `src/` in the checkout.
 
 **Tested on:** Blackwell `sm_120` (RTX PRO 4500), CUDA 13.3, Python 3.14.6 via asdf, gcc/g++ 15, x86_64 Manjaro. Hopper and Ampere work by setting `TORCH_CUDA_ARCH_LIST`. Budget ~200 GB of disk and 32 GB of RAM for parallel nvcc.
 
-**You need:** the CUDA 13.3 toolkit (`scripts/install-cuda-toolkit.sh` handles the gcc-15 shim), a gcc no newer than your CUDA supports (13.3 caps at 15 — `pacman -S gcc15`, `apt install gcc-15 g++-15`), `uv`, and — for the full torchvision/torchaudio builds — `libjpeg-turbo libpng ffmpeg sox`. `cuda-env.sh` picks the newest supported `gcc-*` it finds; `make check-env` fails if the result is missing or too new for the toolkit.
+**You need:** the CUDA 13.3 toolkit (`scripts/install-cuda-toolkit.sh` handles the gcc-15 shim), a gcc no newer than your CUDA supports (13.3 caps at 15 — `pacman -S gcc15`, `apt install gcc-15 g++-15`), `uv`, and — for the full torchvision/torchaudio builds — `libjpeg-turbo libpng ffmpeg sox`. `make setup` finds all of these where they actually live on your machine and tells you which one is missing.
 
 ## Configure
 
 Every knob is an environment variable with a working default, resolved in `scripts/cuda-env.sh`. Export one to override it; nothing needs editing.
+
+Precedence runs in one direction: **what you export by hand** beats **`conceit.env`** (what `make setup` found on this machine) beats **the detection defaults in `cuda-env.sh`**. Every line in `conceit.env` is itself a `${VAR:-default}`, which is what keeps that order honest.
 
 ```bash
 TORCH_CUDA_ARCH_LIST=9.0+PTX   # build for Hopper instead
@@ -99,10 +106,16 @@ CUDA_HOME=/usr/local/cuda-13.2
 
 cuDNN, cuBLASMp, and cuDSS are found by globbing `cuda/` for their extracted archives, so upgrading one means extracting the new tarball and nothing else.
 
+```bash
+CONCEIT_CC_SEARCH_PATH=/opt/toolchains/bin   # where make setup looks for compilers beyond PATH
+CONCEIT_ENV_FILE=/etc/conceit.env            # keep the machine's answers somewhere else
+```
+
 ## Go deeper
 
 | you want to… | start here | then |
 |---|---|---|
+| **set up** a new machine | [the env-intake skill](.agents/skills/env-intake/SKILL.md) — scan, choose, compile-test, persist | `make setup` · `make setup-show` |
 | **build** the stack | `make help` — every target, one line each | [AGENTS.md](AGENTS.md) for the invariants · `make env-show` for resolved paths |
 | **debug** a failed build | [the triage skill](.agents/skills/build-triage/SKILL.md) — intake, adversarial review, coordinate resolution | `make status` · `.build-status.json` per target |
 | **change** something | [CONTRIBUTING.md](CONTRIBUTING.md) — what `make check` gates and why patches are generated | [CHANGELOG.md](CHANGELOG.md) |

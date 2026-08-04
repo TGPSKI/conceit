@@ -103,19 +103,31 @@ endef
 
 # ── Environment ───────────────────────────────────────────────────────────────
 
+.PHONY: setup
+setup: ## Interactive intake: find CUDA + compiler, prove they compile, write conceit.env
+	@bash $(SCRIPTS_DIR)/setup.sh
+
+.PHONY: setup-auto
+setup-auto: ## Same intake with no prompts — best candidate for each, still smoke tested
+	@bash $(SCRIPTS_DIR)/setup.sh --auto
+
+.PHONY: setup-show
+setup-show: ## Print the conceit.env this machine is using
+	@bash $(SCRIPTS_DIR)/setup.sh --show
+
 .PHONY: check-env
 check-env: ## Validate prerequisites: CUDA, Python, uv, GPU, disk
-	@[ -n "$(CUDA_HOME)" ] || { echo "ERROR: CUDA_HOME not set. Run: source scripts/cuda-env.sh"; exit 1; }
+	@[ -n "$(CUDA_HOME)" ] || { echo "ERROR: CUDA_HOME not set. Run: make setup && source scripts/cuda-env.sh"; exit 1; }
 	@[ -d "$(CUDA_HOME)" ] || { echo "ERROR: CUDA_HOME=$(CUDA_HOME) does not exist"; exit 1; }
 	@$(call require_bins,nvidia-smi python)
-	@[ -x "$(CC)" ]  || { echo "ERROR: CC=$(CC) is not an executable compiler. Install a CUDA-supported gcc (pacman -S gcc15 | apt install gcc-15 g++-15), or export CC/CXX"; exit 1; }
-	@[ -x "$(CXX)" ] || { echo "ERROR: CXX=$(CXX) is not an executable compiler. Install a CUDA-supported g++ (pacman -S gcc15 | apt install gcc-15 g++-15), or export CC/CXX"; exit 1; }
+	@[ -x "$(CC)" ]  || { echo "ERROR: CC=$(CC) is not an executable compiler. Run 'make setup' to find one on this machine, or export CC/CXX"; exit 1; }
+	@[ -x "$(CXX)" ] || { echo "ERROR: CXX=$(CXX) is not an executable compiler. Run 'make setup' to find one on this machine, or export CC/CXX"; exit 1; }
 	@hdr="$(CUDA_HOME)/include/crt/host_config.h"; \
 	  max=$$(grep -oE '__GNUC__ > [0-9]+' "$$hdr" 2>/dev/null | head -1 | grep -oE '[0-9]+$$' || true); \
 	  have=$$("$(CXX)" -dumpversion 2>/dev/null | cut -d. -f1 || true); \
 	  if [ -n "$$max" ] && [ -n "$$have" ] && [ "$$have" -gt "$$max" ]; then \
 	    echo "ERROR: $(CXX) is gcc $$have, and this CUDA supports up to gcc $$max — nvcc will refuse to compile."; \
-	    echo "       Install gcc $$max and re-source scripts/cuda-env.sh, or export CC/CXX to one."; \
+	    echo "       Run 'make setup': it finds every compiler on this machine and smoke tests the one you pick."; \
 	    exit 1; \
 	  fi
 	@[ -x "$(UV)" ] || { echo "ERROR: uv not found at $(UV). Install: curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }

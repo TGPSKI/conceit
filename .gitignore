@@ -15,6 +15,9 @@ venv/
 **/*.egg-info/
 **/.eggs/
 
+# ─── Machine-specific environment (written by `make setup`) ──────────────────
+conceit.env
+
 # ─── Runtime state files ──────────────────────────────────────────────────────
 **/.build-status.json
 **/.build-status.json.tmp

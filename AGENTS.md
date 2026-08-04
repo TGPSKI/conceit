@@ -12,6 +12,11 @@ Repository: `github.com/TGPSKI/conceit`
 
 ## Before you build anything
 
+On a machine that has never built here, run `make setup` first — it discovers
+the CUDA toolkit and host compiler and proves they compile together, which is
+the failure this repo has paid for most often. See
+[`.agents/skills/env-intake/SKILL.md`](.agents/skills/env-intake/SKILL.md).
+
 Read [`.agents/skills/build-triage/SKILL.md`](.agents/skills/build-triage/SKILL.md)
 first. It is not background reading — it is the procedure. The single highest-value
 rule in it: **coordinates before compilation.** Read the target repo's own
@@ -51,12 +56,15 @@ wrong is measured in hours of nvcc, not seconds.
 
 ```
 scripts/
+  setup.sh                # environment intake — scan, smoke test, write conceit.env
   cuda-env.sh             # every env default; sourced by everything else
   build-upstream.sh       # the orchestrator — presets, preflight, monitor, status
   gen-patches.sh          # export live src/ diffs into patches/
   install-cuda-toolkit.sh # CUDA runfile install behind a gcc-15 shim
 patches/<target>/         # generated; committed; replayed by make patch-*
 .agents/skills/build-triage/SKILL.md
+.agents/skills/env-intake/SKILL.md
+conceit.env               # gitignored — this machine's answers, written by make setup
 src/                      # gitignored — cloned upstream trees live here
 ```
 
@@ -73,7 +81,14 @@ src/                      # gitignored — cloned upstream trees live here
   and `clone` only show up on a re-run. Emitting it is best-effort by design:
   a status write must never take down a build that has been running for hours.
 - **Every env var takes the form `${VAR:-default}`**, so any single value can be
-  overridden without editing a file. Keep it that way.
+  overridden without editing a file. Keep it that way. `conceit.env` (written by
+  `make setup`, gitignored) is sourced first and uses the same form, so precedence
+  reads: exported by hand > this machine's intake > the defaults in `cuda-env.sh`.
+- **Discover the machine, do not assume it.** A hardcoded path is what lets
+  `check-env` pass on a host that cannot compile. `scripts/setup.sh` scans for
+  toolkits and compilers and then *compiles a CUDA translation unit* with the pair
+  it picked — the only evidence that outranks a version comparison. New
+  prerequisites belong in that scan, not in a new hardcoded default.
 - **Paths derive from the repo root**, computed from the script's own location.
   Never reintroduce a hardcoded `$HOME/...` path — it breaks every clone that
   isn't yours.
