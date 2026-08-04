@@ -56,8 +56,22 @@ unset _root
 # Leaving this unset compiles every supported arch — roughly 9x the nvcc time.
 export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-12.0+PTX}"
 
-export CC="${CC:-/usr/bin/gcc-15}"
-export CXX="${CXX:-/usr/bin/g++-15}"
+# nvcc refuses a host compiler newer than the cap in its own host_config.h —
+# CUDA 13.3 stops at gcc 15 — and a rolling distro's default gcc runs ahead of
+# that (Manjaro is on 16). So prefer an explicitly versioned binary, newest
+# first, and fall back to the unversioned one only when no versioned gcc is
+# installed. Hardcoding a path here is what makes `make check-env` pass on a
+# machine that cannot compile: check-env now verifies whatever this resolves to
+# against the toolkit's own cap.
+_host_cc() {
+  local c
+  for c in "$1-15" "$1-14" "$1-13" "$1"; do
+    command -v "$c" 2>/dev/null && return 0
+  done
+}
+
+export CC="${CC:-$(_host_cc gcc)}"
+export CXX="${CXX:-$(_host_cc g++)}"
 export CUDAHOSTCXX="${CUDAHOSTCXX:-$CXX}"
 export CMAKE_C_COMPILER="${CMAKE_C_COMPILER:-$CC}"
 export CMAKE_CXX_COMPILER="${CMAKE_CXX_COMPILER:-$CXX}"

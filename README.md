@@ -75,7 +75,7 @@ Anything scoring 4–5 gets resolved before you compile. Every row cost a real b
 ```bash
 git clone https://github.com/TGPSKI/conceit.git
 cd conceit
-source scripts/cuda-env.sh   # CUDA_HOME, TORCH_CUDA_ARCH_LIST=12.0+PTX, gcc-15
+source scripts/cuda-env.sh   # CUDA_HOME, TORCH_CUDA_ARCH_LIST=12.0+PTX, host compiler
 make check-env               # fails fast on anything missing
 ```
 
@@ -83,7 +83,7 @@ make check-env               # fails fast on anything missing
 
 **Tested on:** Blackwell `sm_120` (RTX PRO 4500), CUDA 13.3, Python 3.14.6 via asdf, gcc/g++ 15, x86_64 Manjaro. Hopper and Ampere work by setting `TORCH_CUDA_ARCH_LIST`. Budget ~200 GB of disk and 32 GB of RAM for parallel nvcc.
 
-**You need:** the CUDA 13.3 toolkit (`scripts/install-cuda-toolkit.sh` handles the gcc-15 shim), `uv`, and — for the full torchvision/torchaudio builds — `libjpeg-turbo libpng ffmpeg sox`.
+**You need:** the CUDA 13.3 toolkit (`scripts/install-cuda-toolkit.sh` handles the gcc-15 shim), a gcc no newer than your CUDA supports (13.3 caps at 15 — `pacman -S gcc15`, `apt install gcc-15 g++-15`), `uv`, and — for the full torchvision/torchaudio builds — `libjpeg-turbo libpng ffmpeg sox`. `cuda-env.sh` picks the newest supported `gcc-*` it finds; `make check-env` fails if the result is missing or too new for the toolkit.
 
 ## Configure
 
