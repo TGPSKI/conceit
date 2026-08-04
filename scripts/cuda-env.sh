@@ -18,6 +18,17 @@ fi
 export CONCEIT_ROOT="${CONCEIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export CUDA_STAGE_ROOT="${CUDA_STAGE_ROOT:-$CONCEIT_ROOT/cuda}"
 
+# Machine-specific answers from `make setup`, sourced before any default below.
+# Every line in it is itself a ${VAR:-default}, so the precedence chain reads:
+# what you exported by hand > what setup discovered on this machine > the
+# guesses here. Without this layer every new machine has to rediscover its own
+# paths by failing a build.
+_conceit_env_file="${CONCEIT_ENV_FILE:-$CONCEIT_ROOT/conceit.env}"
+if [[ -s "$_conceit_env_file" ]]; then
+  source "$_conceit_env_file"
+fi
+unset _conceit_env_file
+
 if [[ -z "${CUDA_HOME:-}" ]]; then
   for _d in /usr/local/cuda-13.3 /usr/local/cuda; do
     [[ -d "$_d" ]] && { export CUDA_HOME="$_d"; break; }
